@@ -1,0 +1,15 @@
+{
+  "shapes": {
+    "plane": "Plane",
+    "cube": "Cube",
+    "circle": "Circle",
+    "sphere": "Sphere",
+    "cylinder": "Cylinder"
+  },
+  "properties": {
+    "title": "Properties",
+    "position": "Position",
+    "scale": "Scale",
+    "rotation": "Rotation"
+  }
+}
