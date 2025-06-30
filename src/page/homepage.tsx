@@ -34,7 +34,7 @@ const HomePage = () => {
     return new THREE.Line(geometry, material);
   };
 
-  const handlePointerMissed = (e: MouseEvent) => {
+  const handlePointerMissed = () => {
     setSelectedIds([]);
   };
 
