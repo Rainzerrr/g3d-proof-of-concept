@@ -8,13 +8,16 @@
   /* Fonts */
   --font-semibold-14px: normal 600 0.875rem "Inter", sans-serif;
   --font-medium-13px: normal 500 0.8125rem "Inter", sans-serif;
+  --font-medium-12px: normal 500 0.75rem "Inter", sans-serif;
   --font-regular-12px: normal 400 0.75rem "Inter", sans-serif;
+  --font-regular-10px: normal 400 0.625rem "Inter", sans-serif;
 
   /* Colors */
   --color-highlight: #83d0ff;
 
   --color-axe-x: #f87171;
   --color-axe-y: #34d399;
+  --color-axe-z: #83d0ff;
 
   --color-background: #262626;
   --color-grid: #525252;
@@ -31,6 +34,7 @@
 
   --color-neutral-high: #d4d4d4;
   --color-neutral-medium: #737373;
+  --color-neutral-lowest: #171717;
 
   --color-active-background: #0e285d;
 }
@@ -38,4 +42,5 @@
 * {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
