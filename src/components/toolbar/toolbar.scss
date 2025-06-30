@@ -1,0 +1,22 @@
+.toolbar {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 999;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+
+  background-color: var(--color-neutral-lowest);
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1px;
+  border-radius: 8px;
+}
+
+.toolbar__separator {
+  height: 28px;
+  width: 1px;
+  background-color: var(--color-grid);
+}

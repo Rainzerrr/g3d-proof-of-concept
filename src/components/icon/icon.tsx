@@ -6,7 +6,8 @@ export interface IconProps {
   name: string;
   fill?: string;
   stroke?: string;
-  onClick?: () => null;
+  padding?: boolean;
+  onClick?: () => void;
 }
 
 export const Icon = ({
@@ -25,7 +26,7 @@ export const Icon = ({
         onClick={onClick}
       >
         <use
-          xlinkHref={`/symbol-defs.svg#icon-${name}`}
+          xlinkHref={`/assets/symbol-defs.svg#icon-${name}`}
           width="100%"
           height="100%"
           style={{ fill: fill, stroke: stroke }}

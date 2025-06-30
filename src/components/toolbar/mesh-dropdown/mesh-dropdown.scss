@@ -1,0 +1,54 @@
+.mesh-dropdown {
+  position: relative;
+}
+
+.mesh-dropdown__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+}
+
+.mesh-dropdown__options {
+  position: absolute;
+  top: 38px;
+  left: 24px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+
+  background-color: var(--color-neutral-lowest);
+  border-radius: 8px;
+}
+
+.mesh-dropdown__button__chevron,
+.mesh-dropdown__button__chevron--selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0px;
+  border-radius: 4px;
+}
+
+.mesh-dropdown__button__chevron--selected {
+  background-color: var(--color-active-background);
+}
+
+.mesh-dropdown__option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px;
+
+  width: 249px;
+
+  cursor: pointer;
+}
+
+.mesh-dropdown__option__label {
+  font: var(--font-medium-13px);
+  color: var(--color-neutral-high);
+}

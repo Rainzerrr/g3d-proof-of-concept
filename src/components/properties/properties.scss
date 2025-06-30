@@ -1,0 +1,65 @@
+.properties {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 999;
+
+  width: 297px;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+
+  background-color: var(--color-neutral-lowest);
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1;
+  border-radius: 12px;
+}
+
+.properties_title {
+  font: var(--font-semibold-14px);
+  color: var(--color-neutral-medium);
+}
+
+.properties_subtitle {
+  font: var(--font-medium-12px);
+  color: var(--color-neutral-high);
+}
+
+.properties__infos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  align-self: stretch;
+}
+
+.properties__info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+}
+
+.properties__info__inputs {
+  display: flex;
+  gap: 4px;
+}
+
+.properties__position {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+}
+
+.properties__position__inputs {
+}
+
+.properties__position__input__letter {
+}
+
+.properties__position__input {
+}
