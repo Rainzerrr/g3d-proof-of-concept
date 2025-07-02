@@ -1,54 +1,43 @@
-# React + TypeScript + Vite
+# G3D
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Description
 
-Currently, two official plugins are available:
+G3D est une application web (SaaS) dédiée à la création, la visualisation et la manipulation de scènes 3D directement depuis un navigateur.  
+Inspirée par des outils collaboratifs comme Figma, G3D vise à devenir une plateforme de référence pour la conception 3D collaborative en temps réel.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Actuellement développée en React.js, une migration vers Next.js est prévue afin d’optimiser le référencement et d’améliorer les performances globales de l’application.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Technologies utilisées
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **React.js**  
+- **SCSS**
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Fonctionnalités principales
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Affichage en temps réel de la scène  
+L’interface de G3D permet d’afficher en temps réel la scène en cours de construction.  
+Pour aider à la navigation et à la perception de l’espace, une grille quadrillée est visible, composée de cases de 1 mètre par 1 mètre, ainsi que deux lignes repères indiquant les directions des axes X et Y.
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+### Création intuitive de formes 3D  
+La création de meshs (formes 3D) se fait facilement à partir du menu situé en haut à gauche de l’interface.  
+Il suffit de sélectionner une forme dans un menu déroulant, et celle-ci sera automatiquement ajoutée au centre de la scène.  
+Il est actuellement possible de créer plusieurs formes de base, aussi bien en 2D (cercle, carré) qu’en 3D (sphère, cube).
+
+### Modification et transformation en temps réel   
+La sélection des meshs peut se faire individuellement en cliquant dessus, ou par sélection multiple via Ctrl + clic.  
+Lorsqu’un ou plusieurs meshs sont sélectionnés, un panneau latéral droit s’affiche automatiquement.  
+Ce menu permet de modifier les propriétés fondamentales des objets sélectionnés : position, échelle (taille), et rotation dans l’espace.
+
+---
+
+## Informations complémentaires
+
+- **Durée du projet** : 1 mois  
+- **Contributeurs** : 1 personne
+---
+
+## Liens  
+- Démo en ligne : [https://g3d-poc.vercel.app/](https://g3d-poc.vercel.app/)
