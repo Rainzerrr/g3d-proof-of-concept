@@ -50,7 +50,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
   const [isDragging, setIsDragging] = useState(false);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-  const [controlsReady, setControlsReady] = useState(false); // Stocker les données de drag dans un ref pour éviter les closures stales
+  const [controlsReady, setControlsReady] = useState(false);
 
   const dragStartData = useRef<{
     initialPositions: Map<number, THREE.Vector3>;
@@ -92,17 +92,13 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
     positionAttribute.needsUpdate = true;
     geo.computeVertexNormals();
-
     return geo;
   }, [baseGeometry, vertexModifications, positionIndexMap]);
 
   const vertices: [number, number, number][] = useMemo(() => {
     return topology.vertices.map((v, i) => {
       const modifiedPos = vertexModifications[i];
-      if (modifiedPos) {
-        return modifiedPos;
-      }
-      return [v.x, v.y, v.z];
+      return modifiedPos || [v.x, v.y, v.z];
     });
   }, [topology.vertices, vertexModifications]);
 
@@ -127,33 +123,24 @@ const CustomMesh: FC<CustomMeshProps> = ({
   const selectedVertexIndices = useMemo(() => {
     const indices = editMode.selectedElements
       .filter((el) => el.meshId === id && editMode.selectionType === "vertex")
-      .map((el) => el.elementIndex); // LOG 1: Suivi de la sélection
-
-    console.log(`[Mesh ${id}] 🧠 Selection changed: [${indices.join(", ")}]`);
+      .map((el) => el.elementIndex);
 
     return indices;
   }, [editMode.selectedElements, id, editMode.selectionType]);
 
+  // ✅ Correctif : utiliser appliedGeometry pour calculer les arêtes sélectionnées
   const selectionData = useMemo(() => {
-    const tempEdgesGeometry = new THREE.EdgesGeometry(baseGeometry);
+    // ✅ Utilisation de la topologie pour calculer les arêtes sélectionnées
     const selectedEdges = getSelectedEdges(
-      tempEdgesGeometry,
-      vertices,
+      topology.edges,
       selectedVertexIndices
     );
-    tempEdgesGeometry.dispose();
 
     return {
       selectedEdges,
       selectedFaces: getSelectedFaces(topology.faces, selectedVertexIndices),
     };
-  }, [
-    baseGeometry,
-    vertices,
-    topology.faces,
-    selectedVertexIndices,
-    topology.edges,
-  ]);
+  }, [topology.edges, topology.faces, selectedVertexIndices]);
 
   const selectedEdgesGeometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -182,14 +169,12 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
   const selectionCenter = useMemo(() => {
     if (selectedVertexIndices.length === 0) return null;
-
     const center = new THREE.Vector3();
     selectedVertexIndices.forEach((idx) => {
       const v = vertices[idx];
       center.add(new THREE.Vector3(v[0], v[1], v[2]));
     });
     center.divideScalar(selectedVertexIndices.length);
-
     return center;
   }, [selectedVertexIndices, vertices]);
 
@@ -198,18 +183,11 @@ const CustomMesh: FC<CustomMeshProps> = ({
       helperRef.current.position.copy(selectionCenter);
     }
   }, [selectionCenter, isDragging]);
-  /**
-   * Gère les changements d'objet du gizmo (appelé à chaque frame pendant le drag).
-   * Contient la logique pour Single-Vertex et Multi-Vertex (avec anti-race condition).
-   */
 
   const handleGizmoObjectChange = () => {
-    if (!meshRef.current) return; // CAS 1: UN SEUL VERTEX SÉLECTIONNÉ
+    if (!meshRef.current) return;
 
     if (selectedVertexIndices.length === 1) {
-      // LOG 4: Suivi pendant le drag (Single Vertex)
-      console.log(`[Mesh ${id}] 🔄 onObjectChange: SINGLE-VERTEX drag active.`);
-
       const vertexIndex = selectedVertexIndices[0];
       const vertexMesh = meshRef.current.children.find(
         (child) =>
@@ -219,7 +197,6 @@ const CustomMesh: FC<CustomMeshProps> = ({
       ) as THREE.Mesh | undefined;
 
       if (vertexMesh) {
-        // La position de l'objet gizmo (vertexMesh) a déjà été mise à jour par TransformControls.
         const newLocalPosition = vertexMesh.position;
         dispatch({
           type: "UPDATE_VERTEX_POSITION",
@@ -234,13 +211,8 @@ const CustomMesh: FC<CustomMeshProps> = ({
           } as UpdateVertexPositionPayload,
         });
       }
-    } // CAS 2: MULTI-SÉLECTION
-    else if (selectedVertexIndices.length > 1 && helperRef.current) {
-      // VÉRIFICATION/CRÉATION (Anti-Race Condition): Si le drag a commencé mais que dragStartData est null, on le crée.
+    } else if (selectedVertexIndices.length > 1 && helperRef.current) {
       if (!dragStartData.current) {
-        console.log(
-          `[Mesh ${id}] ⚡️ ON_OBJECT_CHANGE: Instant creation of dragStartData.`
-        );
         const positions = new Map<number, THREE.Vector3>();
         selectedVertexIndices.forEach((idx) => {
           const v = vertices[idx];
@@ -251,69 +223,35 @@ const CustomMesh: FC<CustomMeshProps> = ({
           initialPositions: positions,
           startCenter: helperRef.current.position.clone(),
         };
-      } // MISE À JOUR : Mouvement actif
+      }
 
       if (dragStartData.current) {
-        // LOG 4: Suivi pendant le drag (Multi-Vertex)
-        console.log(
-          `[Mesh ${id}] 🔄 onObjectChange: MULTI-VERTEX drag active. Delta check.`
-        );
-
         const delta = helperRef.current.position
           .clone()
           .sub(dragStartData.current.startCenter);
 
-        const currentSelectedIndices = Array.from(
-          dragStartData.current.initialPositions.keys()
-        );
+        const updates = Array.from(
+          dragStartData.current.initialPositions.entries()
+        ).map(([vertexIndex, initialPos]) => ({
+          vertexIndex,
+          newPosition: [
+            initialPos.x + delta.x,
+            initialPos.y + delta.y,
+            initialPos.z + delta.z,
+          ] as [number, number, number],
+        }));
 
-        const updates = currentSelectedIndices
-          .map((vertexIndex) => {
-            const initialPos =
-              dragStartData.current!.initialPositions.get(vertexIndex);
-            if (initialPos) {
-              const newPosition = initialPos.clone().add(delta);
-              return {
-                vertexIndex,
-                newPosition: [newPosition.x, newPosition.y, newPosition.z] as [
-                  number,
-                  number,
-                  number
-                ],
-              };
-            }
-            return null;
-          })
-          .filter((update) => update !== null) as {
-          vertexIndex: number;
-          newPosition: [number, number, number];
-        }[];
-
-        if (updates.length > 0) {
-          dispatch({
-            type: "UPDATE_MULTIPLE_VERTICES",
-            payload: { meshId: id, updates } as UpdateMultipleVerticesPayload,
-          });
-        }
+        dispatch({
+          type: "UPDATE_MULTIPLE_VERTICES",
+          payload: { meshId: id, updates } as UpdateMultipleVerticesPayload,
+        });
       }
-    } // CAS 3: Erreur ou pas de sélection/drag
-    else {
-      // LOG 4: Suivi pendant le drag (Erreur/Idle)
-      console.log(
-        `[Mesh ${id}] ❓ onObjectChange: No valid target for update (${selectedVertexIndices.length} selected).`
-      );
     }
   };
 
   const gizmoTarget = useMemo<THREE.Object3D | null>(() => {
     if (!meshRef.current) return null;
-
     if (selectedVertexIndices.length === 1) {
-      // LOG 2: Cible Gizmo (Single)
-      console.log(
-        `[Mesh ${id}] 🎯 Gizmo Target: Single Vertex ${selectedVertexIndices[0]}`
-      );
-
       return (
         meshRef.current.children.find(
           (child) =>
@@ -328,18 +266,11 @@ const CustomMesh: FC<CustomMeshProps> = ({
         meshRef.current.add(helper);
         helperRef.current = helper;
       }
-
       helperRef.current.position.copy(selectionCenter);
-      helperRef.current.userData.isGizmoHelper = true; // LOG 2: Cible Gizmo (Multi)
-      console.log(`[Mesh ${id}] 🎯 Gizmo Target: Helper (Center)`);
-
       return helperRef.current;
-    } // LOG 2: Cible Gizmo (None)
-
-    console.log(`[Mesh ${id}] 🎯 Gizmo Target: None`);
-
+    }
     return null;
-  }, [selectedVertexIndices, meshRef.current, selectionCenter]); // Réinitialisation de l'état du gizmo helper et des données de drag
+  }, [selectedVertexIndices, meshRef.current, selectionCenter]);
 
   useEffect(() => {
     if (
@@ -349,101 +280,52 @@ const CustomMesh: FC<CustomMeshProps> = ({
     ) {
       meshRef.current.remove(helperRef.current);
       helperRef.current = null;
-    } // Réinitialisation de dragStartData si la sélection change
-
+    }
     if (dragStartData.current !== null) {
-      console.log(
-        `[Mesh ${id}] 🧹 dragStartData cleared due to selection change.`
-      );
       dragStartData.current = null;
     }
-  }, [selectedVertexIndices]); // Réinitialiser controlsReady quand gizmoTarget change
+  }, [selectedVertexIndices]);
 
   useEffect(() => {
-    console.log(
-      `[Mesh ${id}] 🚧 Gizmo Target changed. Setting controlsReady=false.`
-    );
     setControlsReady(false);
-  }, [gizmoTarget]); // Surveiller quand transformControlsRef est assigné
+  }, [gizmoTarget]);
 
   useEffect(() => {
     if (transformControlsRef.current && !controlsReady) {
-      console.log(
-        `[Mesh ${id}] ✅ TransformControls is ready! Setting controlsReady=true.`
-      );
       setControlsReady(true);
     }
-  }, [gizmoTarget, controlsReady]); // Écouteur qui gère le début et la fin du drag
+  }, [gizmoTarget, controlsReady]);
 
   useEffect(() => {
     const controls = transformControlsRef.current;
-    if (!controls || !gizmoTarget || !controlsReady) {
-      console.log(`[Mesh ${id}] ⚠️ Cannot attach listener: Waiting...`);
-      return;
-    }
-
-    console.log(`[Mesh ${id}] 🔧 Attaching dragging-changed listener.`);
+    if (!controls || !gizmoTarget || !controlsReady) return;
 
     const handleDraggingChanged = (event: any) => {
       const dragging = event.value;
-      console.log(
-        `[Mesh ${id}] 🎤 dragging-changed event: ${dragging}. Current dragStartData: ${!!dragStartData.current}`
-      );
       setIsDragging(dragging);
-
-      if (!dragging) {
-        // LOG 3: Fin du drag
-        console.log(`[Mesh ${id}] 🏁 Drag ended. Nullifying dragStartData.`);
-        dragStartData.current = null;
-      }
+      if (!dragging) dragStartData.current = null;
     };
 
     controls.addEventListener("dragging-changed", handleDraggingChanged);
-
     return () => {
-      console.log(`[Mesh ${id}] 🗑️ Detaching dragging-changed listener`);
       controls.removeEventListener("dragging-changed", handleDraggingChanged);
     };
   }, [gizmoTarget, controlsReady]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        setIsCtrlPressed(true);
-      }
+      if (event.ctrlKey || event.metaKey) setIsCtrlPressed(true);
     };
-
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (!event.ctrlKey && !event.metaKey) {
-        setIsCtrlPressed(false);
-      }
+      if (!event.ctrlKey && !event.metaKey) setIsCtrlPressed(false);
     };
-
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
-
-  useEffect(() => {
-    if (mode !== "edit" || selectedVertexIndices.length === 0) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        dispatch({ type: "CLEAR_EDIT_ELEMENT_SELECTION" });
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [mode, selectedVertexIndices, dispatch]);
 
   return (
     <group
@@ -453,14 +335,12 @@ const CustomMesh: FC<CustomMeshProps> = ({
       scale={scale}
       onClick={(e) => {
         e.stopPropagation();
-
         if (mode === "edit") {
           if (isDragging) return;
           if (isSelected) return;
           onClick(e.nativeEvent, id);
           return;
         }
-
         onClick(e.nativeEvent, id);
       }}
       onContextMenu={onContextMenu}
@@ -477,6 +357,8 @@ const CustomMesh: FC<CustomMeshProps> = ({
           side={is2D ? THREE.DoubleSide : THREE.FrontSide}
         />
       </mesh>
+
+      {/* Mode object : outline */}
       {isSelected && mode === "object" && (
         <>
           {!is2D && (
@@ -508,16 +390,19 @@ const CustomMesh: FC<CustomMeshProps> = ({
           )}
         </>
       )}
+
+      {/* Mode edit */}
       {isSelected && mode === "edit" && (
         <>
-          {/* Lignes non sélectionnées (affichées en gris par défaut) */}
+          {/* Lignes normales */}
           <lineSegments geometry={normalEdgesGeometry} raycast={() => null}>
             <lineBasicMaterial
               color={THEME.edge.default}
               linewidth={THEME.sizes.edgeLineWidth}
             />
           </lineSegments>
-          {/* Lignes sélectionnées (affichées avec la couleur de sélection) */}
+
+          {/* ✅ Lignes sélectionnées (corrigé) */}
           {selectionData.selectedEdges.length > 0 && (
             <lineSegments geometry={selectedEdgesGeometry} raycast={() => null}>
               <lineBasicMaterial
@@ -527,58 +412,55 @@ const CustomMesh: FC<CustomMeshProps> = ({
               />
             </lineSegments>
           )}
+
           {/* Faces sélectionnées */}
           {!is2D &&
             selectionData.selectedFaces.length > 0 &&
             selectionData.selectedFaces.map((face, faceIndex) => {
-              if (face.length === 3 || face.length === 4) {
-                const isQuad = face.length === 4;
-                const orderedFace = isQuad
-                  ? orderQuadVertices(face, topology.edges)
-                  : face;
+              if (face.length < 3) return null;
+              const isQuad = face.length === 4;
+              const orderedFace = isQuad
+                ? orderQuadVertices(face, topology.edges)
+                : face;
 
-                const positions = new Float32Array(orderedFace.length * 3);
-                orderedFace.forEach((vertIdx, idx) => {
-                  const v = vertices[vertIdx];
-                  positions[idx * 3] = v[0];
-                  positions[idx * 3 + 1] = v[1];
-                  positions[idx * 3 + 2] = v[2];
-                });
+              const positions = new Float32Array(orderedFace.length * 3);
+              orderedFace.forEach((vertIdx, idx) => {
+                const v = vertices[vertIdx];
+                positions[idx * 3] = v[0];
+                positions[idx * 3 + 1] = v[1];
+                positions[idx * 3 + 2] = v[2];
+              });
 
-                const faceGeometry = new THREE.BufferGeometry();
-                faceGeometry.setAttribute(
-                  "position",
-                  new THREE.BufferAttribute(positions, 3)
-                );
+              const faceGeometry = new THREE.BufferGeometry();
+              faceGeometry.setAttribute(
+                "position",
+                new THREE.BufferAttribute(positions, 3)
+              );
+              faceGeometry.setIndex(isQuad ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]);
+              faceGeometry.computeVertexNormals();
 
-                faceGeometry.setIndex(isQuad ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]);
-                faceGeometry.computeVertexNormals();
-
-                return (
-                  <mesh
-                    key={`selected-face-${faceIndex}`}
-                    geometry={faceGeometry}
-                    userData={{ isSelectable: false }}
-                  >
-                    <meshBasicMaterial
-                      color={THEME.face.selected}
-                      transparent
-                      opacity={THEME.face.opacity}
-                      side={THREE.DoubleSide}
-                      depthWrite={false}
-                      depthTest={true}
-                      // 🌟 SOLUTION AU Z-FIGHTING 🌟
-                      polygonOffset={true}
-                      polygonOffsetFactor={-1}
-                      polygonOffsetUnits={-1}
-                      // 🌟 FIN SOLUTION 🌟
-                    />
-                  </mesh>
-                );
-              }
-              return null;
+              return (
+                <mesh
+                  key={`selected-face-${faceIndex}`}
+                  geometry={faceGeometry}
+                  userData={{ isSelectable: false }}
+                >
+                  <meshBasicMaterial
+                    color={THEME.face.selected}
+                    transparent
+                    opacity={THEME.face.opacity}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                    depthTest={true}
+                    polygonOffset
+                    polygonOffsetFactor={-1}
+                    polygonOffsetUnits={-1}
+                  />
+                </mesh>
+              );
             })}
-          {/* Points de contrôle (Vertices) */}
+
+          {/* Points de contrôle */}
           {vertices.map((vertex, i) => {
             const isSelectedVertex = selectedVertexIndices.includes(i);
             return (
@@ -589,9 +471,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
                 onClick={(e: ThreeEvent<MouseEvent>) => {
                   e.stopPropagation();
                   if (isDragging) return;
-
                   const ctrl = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
-
                   dispatch({
                     type: ctrl
                       ? "MULTI_SELECT_EDIT_ELEMENT"
@@ -616,21 +496,20 @@ const CustomMesh: FC<CustomMeshProps> = ({
               </mesh>
             );
           })}
-          {/* Gizmo de Transformation */}
+
+          {/* Gizmo */}
           {gizmoTarget && !isCtrlPressed && (
             <TransformControls
               ref={(ref) => {
                 transformControlsRef.current = ref;
-                if (ref && !controlsReady) {
-                  setControlsReady(true);
-                }
+                if (ref && !controlsReady) setControlsReady(true);
               }}
               mode="translate"
               object={gizmoTarget}
               onObjectChange={handleGizmoObjectChange}
-              showX={true}
-              showY={true}
-              showZ={true}
+              showX
+              showY
+              showZ
             />
           )}
         </>

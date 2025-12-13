@@ -218,68 +218,24 @@ export function computeTopology(
 
 /**
  * Récupère les edges sélectionnées en fonction des vertices sélectionnés
+ * Version robuste basée sur la topologie (pas les coordonnées).
  */
 export function getSelectedEdges(
-  edgesGeometry: THREE.EdgesGeometry,
-  vertices: [number, number, number][],
+  allEdges: [number, number][],
   selectedVertexIndices: number[]
 ): [number, number][] {
-  try {
-    if (selectedVertexIndices.length < 2) {
-      return [];
+  if (selectedVertexIndices.length < 2) return [];
+
+  const selectedSet = new Set(selectedVertexIndices);
+  const selectedEdges: [number, number][] = [];
+
+  for (const [a, b] of allEdges) {
+    if (selectedSet.has(a) && selectedSet.has(b)) {
+      selectedEdges.push([a, b]);
     }
-
-    const selectedSet = new Set(selectedVertexIndices);
-    const selectedEdges: [number, number][] = [];
-    const position = edgesGeometry.attributes.position as THREE.BufferAttribute;
-
-    if (!position) {
-      return [];
-    }
-
-    const tolerance = 0.000001;
-
-    const findVertexIndex = (x: number, y: number, z: number): number => {
-      for (let i = 0; i < vertices.length; i++) {
-        const [vx, vy, vz] = vertices[i];
-        if (
-          Math.abs(vx - x) < tolerance &&
-          Math.abs(vy - y) < tolerance &&
-          Math.abs(vz - z) < tolerance
-        ) {
-          return i;
-        }
-      }
-      return -1;
-    };
-
-    for (let i = 0; i < position.count; i += 2) {
-      const x1 = position.getX(i);
-      const y1 = position.getY(i);
-      const z1 = position.getZ(i);
-
-      const x2 = position.getX(i + 1);
-      const y2 = position.getY(i + 1);
-      const z2 = position.getZ(i + 1);
-
-      const idx1 = findVertexIndex(x1, y1, z1);
-      const idx2 = findVertexIndex(x2, y2, z2);
-
-      if (
-        idx1 !== -1 &&
-        idx2 !== -1 &&
-        selectedSet.has(idx1) &&
-        selectedSet.has(idx2)
-      ) {
-        selectedEdges.push([idx1, idx2]);
-      }
-    }
-
-    return selectedEdges;
-  } catch (error) {
-    console.error("Error getting selected edges:", error);
-    return [];
   }
+
+  return selectedEdges;
 }
 
 /**
@@ -290,34 +246,20 @@ export function getSelectedFaces(
   faces: number[][],
   selectedVertexIndices: number[]
 ): number[][] {
-  try {
-    if (selectedVertexIndices.length < 3) {
-      return [];
-    }
+  if (selectedVertexIndices.length < 3) return [];
 
-    const selectedSet = new Set(selectedVertexIndices);
-    const selectedFaces: number[][] = [];
+  const selectedSet = new Set(selectedVertexIndices);
+  const selectedFaces: number[][] = [];
 
-    for (const face of faces) {
-      // Une face est sélectionnée si TOUS ses sommets sont sélectionnés
-      const allVerticesSelected = face.every((vertexIndex) =>
-        selectedSet.has(vertexIndex)
-      );
+  for (const face of faces) {
+    const allVerticesSelected = face.every((vertexIndex) =>
+      selectedSet.has(vertexIndex)
+    );
 
-      // Si c'est un quad (4 indices) ET que les 4 sont sélectionnés, on le garde.
-      // Si c'est un triangle (3 indices) ET que les 3 sont sélectionnés, on le garde.
-      if (allVerticesSelected) {
-        // En forçant le maillage logique à être composé de quads (dans computeTopology),
-        // nous garantissons ici qu'un quad nécessite bien 4 sélections.
-        selectedFaces.push(face);
-      }
-    }
-
-    return selectedFaces;
-  } catch (error) {
-    console.error("Error getting selected faces:", error);
-    return [];
+    if (allVerticesSelected) selectedFaces.push(face);
   }
+
+  return selectedFaces;
 }
 
 /**
@@ -327,40 +269,32 @@ export function orderQuadVertices(
   face: number[],
   edges: [number, number][]
 ): number[] {
-  try {
-    if (face.length !== 4) {
-      return face;
+  if (face.length !== 4) return face;
+
+  const adjacency = new Map<number, number[]>();
+  face.forEach((v) => adjacency.set(v, []));
+
+  edges.forEach(([a, b]) => {
+    if (face.includes(a) && face.includes(b)) {
+      adjacency.get(a)?.push(b);
+      adjacency.get(b)?.push(a);
     }
+  });
 
-    const adjacency = new Map<number, number[]>();
-    face.forEach((v) => adjacency.set(v, []));
+  const ordered = [face[0]];
+  let current = face[0];
 
-    edges.forEach(([a, b]) => {
-      if (face.includes(a) && face.includes(b)) {
-        adjacency.get(a)?.push(b);
-        adjacency.get(b)?.push(a);
-      }
-    });
+  for (let i = 0; i < 3; i++) {
+    const neighbors = adjacency.get(current) || [];
+    const next = neighbors.find((n) => !ordered.includes(n));
 
-    const ordered = [face[0]];
-    let current = face[0];
-
-    for (let i = 0; i < 3; i++) {
-      const neighbors = adjacency.get(current) || [];
-      const next = neighbors.find((n) => !ordered.includes(n));
-
-      if (next !== undefined) {
-        ordered.push(next);
-        current = next;
-      } else {
-        // Fallback: retourne la face non ordonnée si le chemin n'est pas trouvé
-        return face;
-      }
+    if (next !== undefined) {
+      ordered.push(next);
+      current = next;
+    } else {
+      return face; // fallback
     }
-
-    return ordered;
-  } catch (error) {
-    console.error("Error ordering quad vertices:", error);
-    return face;
   }
+
+  return ordered;
 }
