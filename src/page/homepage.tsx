@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas, ThreeEvent } from "@react-three/fiber"; // Import de useThree pour accéder aux contrôles
+import { Canvas, ThreeEvent } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
 import Toolbar from "../components/toolbar/toolbar";
 import Properties from "../components/properties/properties";
@@ -9,37 +9,55 @@ import { ShapeType } from "../components/toolbar/mesh-dropdown/mesh-dropdown";
 import { createInfiniteAxisLine } from "../utils/threeUtils";
 import { useScene } from "../context/sceneContext";
 import { MeshData } from "../context/types";
-import { useState, useRef, useEffect } from "react"; // Import de useRef et useEffect
+import { useState, useRef, useEffect } from "react";
 import DeleteModal from "../components/delete-modal/delete-modal";
-import { OrbitControls as OrbitControlsImpl } from "three-stdlib"; // Import du type OrbitControls pour le Ref
+import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import "./homepage.scss";
 
-// --- NOUVEAU COMPOSANT DE CONTRÔLE DE CLAVIER ---
+// --- COMPOSANT DE CONTRÔLE DE CLAVIER ---
+// Zoom toujours actif, rotation avec Alt gauche, pan avec Ctrl gauche.
 const CameraControlByKey = ({
   controlsRef,
 }: {
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
 }) => {
   useEffect(() => {
+    const controls = controlsRef.current;
+    if (controls) {
+      // Par défaut : caméra figée (pas de rotation/pan), mais zoom libre
+      controls.enableRotate = false;
+      controls.enablePan = false;
+      controls.enableZoom = true;
+    }
+
+    const pressedKeys = new Set<string>();
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Bloquer la caméra si la touche Shift est pressée
-      if (event.key === "Shift") {
-        const controls = controlsRef.current;
-        if (controls) {
-          // Désactiver les contrôles pour empêcher le mouvement
-          controls.enabled = false;
-        }
+      const controls = controlsRef.current;
+      if (!controls) return;
+      pressedKeys.add(event.code);
+
+      if (pressedKeys.has("AltLeft")) {
+        controls.enableRotate = true; // 🔓 rotation libre
+      }
+      if (pressedKeys.has("ControlLeft") || pressedKeys.has("ControlRight")) {
+        controls.enablePan = true; // 🔓 déplacement latéral
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      // Réactiver la caméra si la touche Shift est relâchée
-      if (event.key === "Shift") {
-        const controls = controlsRef.current;
-        if (controls) {
-          // Réactiver les contrôles
-          controls.enabled = true;
-        }
+      const controls = controlsRef.current;
+      if (!controls) return;
+      pressedKeys.delete(event.code);
+
+      // 🔒 Quand Alt n’est plus pressé, on bloque la rotation
+      if (!pressedKeys.has("AltLeft")) {
+        controls.enableRotate = false;
+      }
+
+      // 🔒 Quand Ctrl n’est plus pressé, on bloque le pan
+      if (!pressedKeys.has("ControlLeft") && !pressedKeys.has("ControlRight")) {
+        controls.enablePan = false;
       }
     };
 
@@ -52,7 +70,6 @@ const CameraControlByKey = ({
     };
   }, [controlsRef]);
 
-  // Retourne null car ce composant est seulement pour la logique
   return null;
 };
 // --------------------------------------------------
@@ -64,7 +81,6 @@ const HomePage: React.FC = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
 
-  // ✅ NOUVEAU: Référence pour stocker l'instance des OrbitControls
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   const isEditing = mode === "edit";
@@ -168,19 +184,13 @@ const HomePage: React.FC = () => {
         <ambientLight intensity={0.5} />
         <directionalLight position={[2, 5, 3]} intensity={0.8} />
 
-        {/* ✅ NOUVEAU: On attache la référence aux OrbitControls
-          lorsque les contrôles sont montés.
-        */}
-        <OrbitControls
-          enableDamping={true}
-          ref={controlsRef as any} // on doit utiliser 'any' pour le ref ici pour éviter les conflits de type générique
-        />
+        {/* 🎮 OrbitControls relié à la caméra */}
+        <OrbitControls enableDamping ref={controlsRef as any} />
 
-        {/* ✅ NOUVEAU: Ajout du composant qui gère le clavier (Shift) */}
+        {/* 🧠 Gestion clavier : Alt = rotation, Ctrl = pan */}
         <CameraControlByKey controlsRef={controlsRef} />
 
         <group>
-          {/* Lignes infinies des axes */}
           <primitive
             object={createInfiniteAxisLine(
               "#f87171",
@@ -199,8 +209,6 @@ const HomePage: React.FC = () => {
         </group>
 
         {meshes.map(renderMesh)}
-
-        {/* <ClickLogger /> */}
       </Canvas>
 
       {deleteModalVisible && selectedIds.length > 0 && (
