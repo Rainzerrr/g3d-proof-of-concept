@@ -1,41 +1,47 @@
+"use client";
+
+import React from "react";
+import { useScene } from "../../context/sceneContext";
 import { useTranslation } from "react-i18next";
 import "./properties.scss";
 import PropertyInput from "./property_input/property_input";
-import { MeshData } from "../../page/homepage";
-import { FC } from "react";
+import { MeshData } from "../../context/types";
 
 interface PropertiesProps {
   selectedId: number | null;
-  meshes: MeshData[];
-  setMeshes: React.Dispatch<React.SetStateAction<MeshData[]>>;
 }
 
-const Properties: FC<PropertiesProps> = ({ selectedId, meshes, setMeshes }) => {
+const Properties: React.FC<PropertiesProps> = ({ selectedId }) => {
+  const { state, dispatch } = useScene();
   const { t } = useTranslation();
+  const selectedMesh: MeshData | undefined = state.meshes.find(
+    (m) => m.id === selectedId
+  );
 
-  if (selectedId === null) return null;
-
-  const selectedMesh = meshes.find((mesh) => mesh.id === selectedId);
+  // pas de mesh sélectionné = rien à afficher
   if (!selectedMesh) return null;
 
   const updateProperty = (
     type: "position" | "scale" | "rotation",
-    axis: number, // 0: X, 1: Y, 2: Z
+    axis: number,
     value: string
   ) => {
+    if (value.trim() === "") return; // on laisse vide sans update mesh
+
     const floatValue = parseFloat(value);
     if (isNaN(floatValue)) return;
 
-    const updated = meshes.map((mesh) =>
-      mesh.id === selectedId
-        ? {
-            ...mesh,
-            [type]: mesh[type].map((v, i) => (i === axis ? floatValue : v)) as
-              | [number, number, number],
-          }
-        : mesh
-    );
-    setMeshes(updated);
+    const newValues: [number, number, number] = [...selectedMesh[type]] as [
+      number,
+      number,
+      number
+    ];
+    newValues[axis] = floatValue;
+
+    dispatch({
+      type: "UPDATE_MESH",
+      payload: { id: selectedMesh.id, property: type, values: newValues },
+    });
   };
 
   const renderInputs = (
@@ -45,12 +51,14 @@ const Properties: FC<PropertiesProps> = ({ selectedId, meshes, setMeshes }) => {
     <div className="properties__info">
       <span className="properties_subtitle">{t(`properties.${type}`)}</span>
       <div className="properties__info__inputs">
-        {(["X", "Y", "Z"] as const).map((axe, i) => (
+        {["X", "Y", "Z"].map((axis, i) => (
           <PropertyInput
-            key={axe}
-            axe={axe}
-            value={values[i].toString()}
-            onChange={(e) => updateProperty(type, i, e.target.value)}
+            key={axis}
+            axe={axis}
+            defaultValue={values[i].toString()}
+            onValidChange={(v: string) => updateProperty(type, i, v)}
+            min={type === "scale" ? 0.001 : -10000}
+            max={10000}
           />
         ))}
       </div>
