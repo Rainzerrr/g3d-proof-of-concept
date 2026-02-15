@@ -2,11 +2,11 @@ import * as THREE from "three";
 import { ShapeType, GeometryCache, TopologyData } from "../context/types";
 import { computeTopology } from "./geometryHelpers";
 
-// ✅ Cache global pour éviter de recalculer les géométries
+// Global cache to prevent re-computing topology on every render
 const geometryCache = new Map<ShapeType, GeometryCache>();
 
 /**
- * Crée une géométrie selon le type de forme
+ * Factory for creating raw Three.js BufferGeometries based on shape type.
  */
 function createGeometry(type: ShapeType): THREE.BufferGeometry {
   switch (type) {
@@ -26,8 +26,11 @@ function createGeometry(type: ShapeType): THREE.BufferGeometry {
 }
 
 /**
- * Récupère les données de géométrie depuis le cache ou les calcule
- * ✅ Le retour est casté pour inclure `positionIndexMap`
+ * Retrieves geometry and topology data for a specific shape type.
+ * Implements a Singleton/Cache pattern to optimize performance.
+ *
+ * @param type - The primitive shape type to retrieve.
+ * @returns Cached geometry, visual edges, and computed topology data.
  */
 export function getGeometryData(type: ShapeType): GeometryCache {
   if (!geometryCache.has(type)) {
@@ -35,7 +38,7 @@ export function getGeometryData(type: ShapeType): GeometryCache {
       const geometry = createGeometry(type);
       const edges = new THREE.EdgesGeometry(geometry);
 
-      // computeTopology retourne maintenant positionIndexMap
+      // Compute heavy topology data (welding, quads, etc.)
       const {
         vertices,
         edges: topologyEdges,
@@ -49,12 +52,12 @@ export function getGeometryData(type: ShapeType): GeometryCache {
         geometry,
         edges,
         topology,
-        positionIndexMap, // ✅ Enregistrement du positionIndexMap
+        positionIndexMap,
       });
     } catch (error) {
       console.error(`Failed to create geometry for type ${type}:`, error);
 
-      // Fallback sur un cube en cas d'erreur
+      // Fallback mechanism to prevent app crash
       const fallbackGeometry = new THREE.BoxGeometry(1, 1, 1);
       const fallbackEdges = new THREE.EdgesGeometry(fallbackGeometry);
       const fallbackTopologyData = computeTopology(fallbackGeometry);
@@ -68,12 +71,12 @@ export function getGeometryData(type: ShapeType): GeometryCache {
     }
   }
 
-  // Le cache retourne un objet qui correspond à GeometryCache
   return geometryCache.get(type)!;
 }
 
 /**
- * Nettoie le cache (utile pour les tests ou le hot-reload)
+ * Clears the geometry cache and disposes of GPU resources.
+ * Call this when unmounting the editor or reloading contexts.
  */
 export function clearGeometryCache(): void {
   geometryCache.forEach((cache) => {
@@ -84,7 +87,7 @@ export function clearGeometryCache(): void {
 }
 
 /**
- * Vérifie si une forme est 2D
+ * Helper to determine if a shape type is 2D (planar).
  */
 export function is2DShape(type: ShapeType): boolean {
   return type === "square" || type === "circle";

@@ -28,6 +28,7 @@ interface CustomMeshProps {
   isSelected: boolean;
   onClick: (event: MouseEvent, id: number) => void;
   onContextMenu?: (event: ThreeEvent<MouseEvent>) => void;
+  onLockedClick?: (meshId: number) => void; // 🆕 Callback for locked mesh click
 }
 
 const CustomMesh: FC<CustomMeshProps> = ({
@@ -40,8 +41,9 @@ const CustomMesh: FC<CustomMeshProps> = ({
   isSelected,
   onClick,
   onContextMenu,
+  onLockedClick, // 🆕
 }) => {
-  const { state, dispatch } = useScene();
+  const { state, dispatch, commitAction, clientId } = useScene();
   const { mode, editMode, meshes } = state;
 
   const meshRef = useRef<THREE.Group>(null);
@@ -59,6 +61,9 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
   const meshData = useMemo(() => meshes.find((m) => m.id === id), [meshes, id]);
   const vertexModifications = meshData?.vertexModifications || {};
+
+  // 🆕 Lock status (but no visual changes)
+  const isLockedByOther = meshData?.lockedBy && meshData.lockedBy !== clientId;
 
   const {
     geometry: baseGeometry,
@@ -115,7 +120,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
     geo.setAttribute(
       "position",
-      new THREE.Float32BufferAttribute(positions, 3)
+      new THREE.Float32BufferAttribute(positions, 3),
     );
     return geo;
   }, [vertices, topology.edges]);
@@ -128,12 +133,10 @@ const CustomMesh: FC<CustomMeshProps> = ({
     return indices;
   }, [editMode.selectedElements, id, editMode.selectionType]);
 
-  // ✅ Correctif : utiliser appliedGeometry pour calculer les arêtes sélectionnées
   const selectionData = useMemo(() => {
-    // ✅ Utilisation de la topologie pour calculer les arêtes sélectionnées
     const selectedEdges = getSelectedEdges(
       topology.edges,
-      selectedVertexIndices
+      selectedVertexIndices,
     );
 
     return {
@@ -155,7 +158,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
 
     geo.setAttribute(
       "position",
-      new THREE.Float32BufferAttribute(positions, 3)
+      new THREE.Float32BufferAttribute(positions, 3),
     );
     return geo;
   }, [selectionData.selectedEdges, vertices]);
@@ -193,7 +196,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
         (child) =>
           (child as THREE.Mesh).isMesh &&
           child.userData.isVertexMesh &&
-          child.userData.vertexIndex === vertexIndex
+          child.userData.vertexIndex === vertexIndex,
       ) as THREE.Mesh | undefined;
 
       if (vertexMesh) {
@@ -231,7 +234,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
           .sub(dragStartData.current.startCenter);
 
         const updates = Array.from(
-          dragStartData.current.initialPositions.entries()
+          dragStartData.current.initialPositions.entries(),
         ).map(([vertexIndex, initialPos]) => ({
           vertexIndex,
           newPosition: [
@@ -249,6 +252,58 @@ const CustomMesh: FC<CustomMeshProps> = ({
     }
   };
 
+  const handleDragEnd = () => {
+    if (selectedVertexIndices.length === 1) {
+      const vertexIndex = selectedVertexIndices[0];
+      const vertexMesh = meshRef.current?.children.find(
+        (child) =>
+          (child as THREE.Mesh).isMesh &&
+          child.userData.isVertexMesh &&
+          child.userData.vertexIndex === vertexIndex,
+      ) as THREE.Mesh | undefined;
+
+      if (vertexMesh) {
+        const newLocalPosition = vertexMesh.position;
+        commitAction({
+          type: "UPDATE_VERTEX_POSITION",
+          payload: {
+            meshId: id,
+            vertexIndex: vertexIndex,
+            newPosition: [
+              newLocalPosition.x,
+              newLocalPosition.y,
+              newLocalPosition.z,
+            ],
+          } as UpdateVertexPositionPayload,
+        });
+      }
+    } else if (
+      selectedVertexIndices.length > 1 &&
+      dragStartData.current &&
+      helperRef.current
+    ) {
+      const delta = helperRef.current.position
+        .clone()
+        .sub(dragStartData.current.startCenter);
+
+      const updates = Array.from(
+        dragStartData.current.initialPositions.entries(),
+      ).map(([vertexIndex, initialPos]) => ({
+        vertexIndex,
+        newPosition: [
+          initialPos.x + delta.x,
+          initialPos.y + delta.y,
+          initialPos.z + delta.z,
+        ] as [number, number, number],
+      }));
+
+      commitAction({
+        type: "UPDATE_MULTIPLE_VERTICES",
+        payload: { meshId: id, updates } as UpdateMultipleVerticesPayload,
+      });
+    }
+  };
+
   const gizmoTarget = useMemo<THREE.Object3D | null>(() => {
     if (!meshRef.current) return null;
     if (selectedVertexIndices.length === 1) {
@@ -257,7 +312,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
           (child) =>
             (child as THREE.Mesh).isMesh &&
             child.userData.isVertexMesh &&
-            child.userData.vertexIndex === selectedVertexIndices[0]
+            child.userData.vertexIndex === selectedVertexIndices[0],
         ) || null
       );
     } else if (selectedVertexIndices.length > 1 && selectionCenter) {
@@ -303,7 +358,10 @@ const CustomMesh: FC<CustomMeshProps> = ({
     const handleDraggingChanged = (event: any) => {
       const dragging = event.value;
       setIsDragging(dragging);
-      if (!dragging) dragStartData.current = null;
+      if (!dragging) {
+        handleDragEnd();
+        dragStartData.current = null;
+      }
     };
 
     controls.addEventListener("dragging-changed", handleDraggingChanged);
@@ -335,6 +393,13 @@ const CustomMesh: FC<CustomMeshProps> = ({
       scale={scale}
       onClick={(e) => {
         e.stopPropagation();
+
+        // 🆕 Check if mesh is locked by another user
+        if (isLockedByOther && mode === "object") {
+          onLockedClick?.(id);
+          return;
+        }
+
         if (mode === "edit") {
           if (isDragging) return;
           if (isSelected) return;
@@ -351,6 +416,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
         receiveShadow
         userData={{ id, isSelectable: mode === "object" }}
       >
+        {/* ✅ Keep original color - no visual lock indicator */}
         <meshStandardMaterial
           color={color}
           transparent={false}
@@ -358,7 +424,8 @@ const CustomMesh: FC<CustomMeshProps> = ({
         />
       </mesh>
 
-      {/* Mode object : outline */}
+      {/* ❌ Removed lock indicator HTML element */}
+
       {isSelected && mode === "object" && (
         <>
           {!is2D && (
@@ -391,10 +458,8 @@ const CustomMesh: FC<CustomMeshProps> = ({
         </>
       )}
 
-      {/* Mode edit */}
       {isSelected && mode === "edit" && (
         <>
-          {/* Lignes normales */}
           <lineSegments geometry={normalEdgesGeometry} raycast={() => null}>
             <lineBasicMaterial
               color={THEME.edge.default}
@@ -402,7 +467,6 @@ const CustomMesh: FC<CustomMeshProps> = ({
             />
           </lineSegments>
 
-          {/* ✅ Lignes sélectionnées (corrigé) */}
           {selectionData.selectedEdges.length > 0 && (
             <lineSegments geometry={selectedEdgesGeometry} raycast={() => null}>
               <lineBasicMaterial
@@ -413,7 +477,6 @@ const CustomMesh: FC<CustomMeshProps> = ({
             </lineSegments>
           )}
 
-          {/* Faces sélectionnées */}
           {!is2D &&
             selectionData.selectedFaces.length > 0 &&
             selectionData.selectedFaces.map((face, faceIndex) => {
@@ -434,7 +497,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
               const faceGeometry = new THREE.BufferGeometry();
               faceGeometry.setAttribute(
                 "position",
-                new THREE.BufferAttribute(positions, 3)
+                new THREE.BufferAttribute(positions, 3),
               );
               faceGeometry.setIndex(isQuad ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]);
               faceGeometry.computeVertexNormals();
@@ -445,6 +508,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
                   geometry={faceGeometry}
                   userData={{ isSelectable: false }}
                 >
+                  {/* ✅ Keep original face color */}
                   <meshBasicMaterial
                     color={THEME.face.selected}
                     transparent
@@ -460,7 +524,6 @@ const CustomMesh: FC<CustomMeshProps> = ({
               );
             })}
 
-          {/* Points de contrôle */}
           {vertices.map((vertex, i) => {
             const isSelectedVertex = selectedVertexIndices.includes(i);
             return (
@@ -471,6 +534,13 @@ const CustomMesh: FC<CustomMeshProps> = ({
                 onClick={(e: ThreeEvent<MouseEvent>) => {
                   e.stopPropagation();
                   if (isDragging) return;
+
+                  // 🆕 Check if mesh is locked in edit mode
+                  if (isLockedByOther) {
+                    onLockedClick?.(id);
+                    return;
+                  }
+
                   const ctrl = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
                   dispatch({
                     type: ctrl
@@ -497,8 +567,7 @@ const CustomMesh: FC<CustomMeshProps> = ({
             );
           })}
 
-          {/* Gizmo */}
-          {gizmoTarget && !isCtrlPressed && (
+          {gizmoTarget && !isCtrlPressed && !isLockedByOther && (
             <TransformControls
               ref={(ref) => {
                 transformControlsRef.current = ref;

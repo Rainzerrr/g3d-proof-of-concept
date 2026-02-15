@@ -10,6 +10,8 @@ export interface MeshData {
   scale: [number, number, number];
   color: string;
   vertexModifications?: { [vertexIndex: number]: [number, number, number] };
+  lockedBy?: string | null;
+  lockedByName?: string | null;
 }
 
 export interface CameraState {
@@ -40,6 +42,12 @@ export interface SelectedElement {
 export interface EditModeState {
   selectionType: "vertex" | "edge" | "face";
   selectedElements: SelectedElement[];
+}
+
+export interface UserInfo {
+  clientId: string;
+  name: string;
+  color: string;
 }
 
 export interface SceneState {
@@ -91,7 +99,9 @@ export interface Action {
     | "UPDATE_MULTIPLE_VERTICES"
     | "MULTI_SELECT_EDIT_ELEMENT"
     | "CLEAR_EDIT_ELEMENT_SELECTION"
-    | "CLEAR_EDIT_SELECTION";
+    | "CLEAR_EDIT_SELECTION"
+    | "SYNC_STATE"
+    | "UPDATE_MESH_LOCK";
   payload?:
     | number
     | string
@@ -99,7 +109,9 @@ export interface Action {
     | UpdateVertexPositionPayload
     | UpdateMultipleVerticesPayload
     | SelectEditElementPayload
-    | UpdateMeshPayload;
+    | UpdateMeshPayload
+    | SceneState
+    | { meshId: number; lockedBy: string | null };
 }
 
 export type SelectionType = "vertex" | "edge" | "face";

@@ -4,23 +4,26 @@ import { TopologyData } from "../context/types";
 type ComputeTopologyResult = TopologyData & { positionIndexMap: number[] };
 
 /**
- * Fusionne les paires de triangles adjacents qui partagent une arête interne
- * (une arête qui n'est pas dans la liste des arêtes externes de la topologie)
- * pour former des quads logiques.
+ * Merges adjacent triangles sharing an internal edge to form logical quads.
+ * It identifies "diagonal" edges that are not part of the visual topology and merges the triangles sharing them.
+ *
+ * @param triangles - List of triangle face indices.
+ * @param topologyEdges - List of visual "hard" edges.
  */
 function groupTrianglesIntoQuads(
   triangles: number[][],
-  topologyEdges: [number, number][]
+  topologyEdges: [number, number][],
 ): number[][] {
   const edgeMap = new Map<string, number[][]>();
   const getEdgeKey = (a: number, b: number) =>
     a < b ? `${a}-${b}` : `${b}-${a}`;
 
-  // Utilise un Set pour une recherche rapide des arêtes de la topologie
+  // Create a quick lookup set for visual topology edges
   const topologyEdgeSet = new Set<string>();
   topologyEdges.forEach(([a, b]) => topologyEdgeSet.add(getEdgeKey(a, b)));
 
-  // 1. Identifier les arêtes internes (diagonales) partagées
+  // 1. Identify shared internal edges (diagonals)
+  // If an edge is NOT in topologyEdgeSet, it's a candidate for merging.
   for (const triangle of triangles) {
     const [a, b, c] = triangle;
     const edges = [
@@ -31,8 +34,6 @@ function groupTrianglesIntoQuads(
 
     for (const [u, v] of edges) {
       const edgeKey = getEdgeKey(u, v);
-
-      // Si l'arête n'est PAS une arête externe de la topologie, c'est une diagonale interne
       if (!topologyEdgeSet.has(edgeKey)) {
         if (!edgeMap.has(edgeKey)) {
           edgeMap.set(edgeKey, []);
@@ -45,13 +46,13 @@ function groupTrianglesIntoQuads(
   const processedTriangles = new Set<number[]>();
   const quads: number[][] = [];
 
-  // 2. Fusionner les paires qui partagent une diagonale
+  // 2. Merge pairs sharing a diagonal into Quads
   for (const adjacentTriangles of edgeMap.values()) {
     if (adjacentTriangles.length === 2) {
       const [T1, T2] = adjacentTriangles;
 
-      // S'assurer que les deux triangles n'ont pas déjà été fusionnés
       if (!processedTriangles.has(T1) && !processedTriangles.has(T2)) {
+        // Create a unique set of vertices from both triangles (should result in 4 vertices)
         const quad = Array.from(new Set([...T1, ...T2]));
 
         if (quad.length === 4) {
@@ -63,7 +64,7 @@ function groupTrianglesIntoQuads(
     }
   }
 
-  // 3. Ajouter les triangles restants (faces non fusionnables)
+  // 3. Collect remaining unmerged triangles
   const finalFaces: number[][] = [...quads];
   for (const triangle of triangles) {
     if (!processedTriangles.has(triangle)) {
@@ -75,10 +76,11 @@ function groupTrianglesIntoQuads(
 }
 
 /**
- * Triangule un polygone convexe (plus de 4 vertices) en utilisant la méthode du "fan".
- * Génère une liste d'indices de triangles à partir d'un ensemble ordonné de vertices.
- * @param faceIndices La liste ordonnée des indices de vertices de la face (N >= 3).
- * @returns Un tableau d'indices pour le BufferGeometry (e.g., [0, 1, 2, 0, 2, 3, ...])
+ * Triangulates a convex polygon (N >= 3) using the Triangle Fan method.
+ * Useful for converting quads back to renderable triangles.
+ *
+ * @param faceIndices - Ordered list of vertex indices for the face.
+ * @returns Flat array of indices for BufferGeometry.
  */
 export function fanTriangulatePolygon(faceIndices: number[]): number[] {
   const indices: number[] = [];
@@ -86,12 +88,10 @@ export function fanTriangulatePolygon(faceIndices: number[]): number[] {
 
   if (N < 3) return indices;
 
-  // Le premier sommet (indice 0) est le pivot de la triangulation en éventail.
+  // Use the first vertex as a pivot for the fan
   const pivotIndex = 0;
 
-  // Pour chaque triangle dans l'éventail : (0, i, i+1)
   for (let i = 1; i < N - 1; i++) {
-    // Triangle (Pivot, Vertex[i], Vertex[i+1])
     indices.push(faceIndices[pivotIndex]);
     indices.push(faceIndices[i]);
     indices.push(faceIndices[i + 1]);
@@ -101,12 +101,14 @@ export function fanTriangulatePolygon(faceIndices: number[]): number[] {
 }
 
 /**
- * Calcule la topologie d'une géométrie (vertices, edges, faces)
- * Les faces sont retournées comme des QUADS (4 indices) en fusionnant les triangles adjacents.
- * Retourne également la map d'index BufferGeometry -> Topologie
+ * Computes the editable topology of a BufferGeometry.
+ * Performs vertex welding, edge extraction, and quad reconstruction.
+ *
+ * @param geometry - Source Three.js geometry.
+ * @returns Topology data (vertices, edges, faces) and a map from BufferGeometry indices to topology indices.
  */
 export function computeTopology(
-  geometry: THREE.BufferGeometry
+  geometry: THREE.BufferGeometry,
 ): ComputeTopologyResult {
   try {
     const position = geometry.attributes.position as THREE.BufferAttribute;
@@ -118,16 +120,14 @@ export function computeTopology(
     const vertexMap = new Map<string, number>();
     const triangles: number[][] = [];
     const positionIndexMap: number[] = [];
-
     const tolerance = 0.000001;
 
     const getVertexKey = (x: number, y: number, z: number): string => {
-      return `${Math.round(x / tolerance)},${Math.round(
-        y / tolerance
-      )},${Math.round(z / tolerance)}`;
+      return `${Math.round(x / tolerance)},${Math.round(y / tolerance)},${Math.round(z / tolerance)}`;
     };
 
-    // 1. Extraire les vertices uniques et créer la map
+    // 1. Extract and weld unique vertices
+    // Maps multiple geometric positions to a single topological vertex index
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i);
       const y = position.getY(i);
@@ -147,23 +147,21 @@ export function computeTopology(
       positionIndexMap[i] = vertexIndex;
     }
 
-    // 2. Extraire les triangles (faces primitives de BufferGeometry)
+    // 2. Extract primitive triangles using welded indices
     const index = geometry.index;
     const faceCount = index ? index.count / 3 : position.count / 3;
 
     for (let i = 0; i < faceCount; i++) {
       const faceIndices: number[] = [];
-
       for (let j = 0; j < 3; j++) {
         const idx = index ? index.getX(i * 3 + j) : i * 3 + j;
-        const vertexIndex = positionIndexMap[idx];
-        faceIndices.push(vertexIndex);
+        faceIndices.push(positionIndexMap[idx]);
       }
-
       triangles.push(faceIndices);
     }
 
-    // 3. Extraire les edges en utilisant EdgesGeometry
+    // 3. Extract visual edges using EdgesGeometry
+    // This filters out internal flat edges automatically
     const edgesGeometry = new THREE.EdgesGeometry(geometry);
     const edgesPosition = edgesGeometry.attributes
       .position as THREE.BufferAttribute;
@@ -188,7 +186,6 @@ export function computeTopology(
         edgesSet.add(edgeKey);
       }
     }
-
     edgesGeometry.dispose();
 
     const edgeArray: [number, number][] = Array.from(edgesSet).map((key) => {
@@ -196,33 +193,27 @@ export function computeTopology(
       return [a, b] as [number, number];
     });
 
-    // 4. Fusionner les triangles de la BufferGeometry en quads logiques
+    // 4. Merge triangles into Quads based on topology
     const faces = groupTrianglesIntoQuads(triangles, edgeArray);
 
     return {
       vertices,
       edges: edgeArray,
-      faces, // Contient maintenant les quads logiques (et tout triangle non fusionné)
+      faces,
       positionIndexMap,
     };
   } catch (error) {
     console.error("Error computing topology:", error);
-    return {
-      vertices: [],
-      edges: [],
-      faces: [],
-      positionIndexMap: [],
-    };
+    return { vertices: [], edges: [], faces: [], positionIndexMap: [] };
   }
 }
 
 /**
- * Récupère les edges sélectionnées en fonction des vertices sélectionnés
- * Version robuste basée sur la topologie (pas les coordonnées).
+ * Filters edges where both endpoints are in the selection.
  */
 export function getSelectedEdges(
   allEdges: [number, number][],
-  selectedVertexIndices: number[]
+  selectedVertexIndices: number[],
 ): [number, number][] {
   if (selectedVertexIndices.length < 2) return [];
 
@@ -239,12 +230,11 @@ export function getSelectedEdges(
 }
 
 /**
- * Récupère les faces sélectionnées en fonction des vertices sélectionnés.
- * Une face (quad ou triangle) n'est sélectionnée que si TOUS ses vertices sont sélectionnés.
+ * Filters faces where ALL vertices are in the selection.
  */
 export function getSelectedFaces(
   faces: number[][],
-  selectedVertexIndices: number[]
+  selectedVertexIndices: number[],
 ): number[][] {
   if (selectedVertexIndices.length < 3) return [];
 
@@ -253,9 +243,8 @@ export function getSelectedFaces(
 
   for (const face of faces) {
     const allVerticesSelected = face.every((vertexIndex) =>
-      selectedSet.has(vertexIndex)
+      selectedSet.has(vertexIndex),
     );
-
     if (allVerticesSelected) selectedFaces.push(face);
   }
 
@@ -263,14 +252,16 @@ export function getSelectedFaces(
 }
 
 /**
- * Ordonne les vertices d'un quad dans le bon ordre pour éviter les faces tordues
+ * Reorders quad vertices to ensure they follow a contiguous path (perimeter).
+ * Prevents "bowtie" or crossed rendering artifacts.
  */
 export function orderQuadVertices(
   face: number[],
-  edges: [number, number][]
+  edges: [number, number][],
 ): number[] {
   if (face.length !== 4) return face;
 
+  // Build local adjacency graph
   const adjacency = new Map<number, number[]>();
   face.forEach((v) => adjacency.set(v, []));
 
@@ -281,6 +272,7 @@ export function orderQuadVertices(
     }
   });
 
+  // Traverse the graph to order vertices
   const ordered = [face[0]];
   let current = face[0];
 
@@ -292,7 +284,7 @@ export function orderQuadVertices(
       ordered.push(next);
       current = next;
     } else {
-      return face; // fallback
+      return face; // Fallback if topology is broken
     }
   }
 

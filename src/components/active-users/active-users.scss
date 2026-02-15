@@ -1,0 +1,173 @@
+.active-users {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+
+  // Trigger Button (Collapsed State)
+  &__trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    background-color: var(--color-neutral-lowest);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+
+  // Overlapping Avatars Container
+  &__avatars {
+    display: flex;
+    align-items: center;
+  }
+
+  // Avatar Circle
+  &__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    border: 2px solid rgba(0, 0, 0, 0.85);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+    font: var(--font-medium-12px);
+    font-size: 11px;
+
+    // More users indicator
+    &--more {
+      background-color: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      font-size: 10px;
+    }
+  }
+
+  // Chevron Icon
+  &__chevron {
+    color: rgba(255, 255, 255, 0.7);
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(180deg);
+    }
+  }
+
+  // Dropdown Menu
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 240px;
+    max-width: 280px;
+    background-color: var(--color-neutral-lowest);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: dropdownFadeIn 0.2s ease;
+  }
+
+  @keyframes dropdownFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Dropdown Header
+  &__dropdown-header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font: var(--font-medium-12px);
+  }
+
+  // Users List in Dropdown
+  &__list {
+    padding: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+
+  // Individual User Item
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+
+    // Avatar in list (no overlapping)
+    .active-users__avatar {
+      width: 32px;
+      height: 32px;
+      border: none;
+      margin-left: 0 !important;
+    }
+  }
+
+  // User Name
+  &__name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font: var(--font-medium-13px);
+  }
+
+  // (You) Badge
+  &__badge {
+    margin-left: 6px;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+    font: var(--font-medium-13px);
+  }
+}

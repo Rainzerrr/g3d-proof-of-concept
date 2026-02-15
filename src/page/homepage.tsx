@@ -13,9 +13,13 @@ import { useState, useRef, useEffect } from "react";
 import DeleteModal from "../components/delete-modal/delete-modal";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import "./homepage.scss";
+import Snackbar from "../components/snakebar/snakebar";
+import ActiveUsers from "../components/active-users/active-users";
 
-// --- COMPOSANT DE CONTRÔLE DE CLAVIER ---
-// Zoom toujours actif, rotation avec Alt gauche, pan avec Ctrl gauche.
+/**
+ * Manages 3D camera behavior via keyboard modifiers.
+ * Enables rotation only when Alt is held, and panning when Ctrl is held.
+ */
 const CameraControlByKey = ({
   controlsRef,
 }: {
@@ -24,7 +28,6 @@ const CameraControlByKey = ({
   useEffect(() => {
     const controls = controlsRef.current;
     if (controls) {
-      // Par défaut : caméra figée (pas de rotation/pan), mais zoom libre
       controls.enableRotate = false;
       controls.enablePan = false;
       controls.enableZoom = true;
@@ -32,33 +35,25 @@ const CameraControlByKey = ({
 
     const pressedKeys = new Set<string>();
 
+    // Update control permissions based on active key combinations
     const handleKeyDown = (event: KeyboardEvent) => {
-      const controls = controlsRef.current;
-      if (!controls) return;
+      const ctrl = controlsRef.current;
+      if (!ctrl) return;
       pressedKeys.add(event.code);
 
-      if (pressedKeys.has("AltLeft")) {
-        controls.enableRotate = true; // 🔓 rotation libre
-      }
-      if (pressedKeys.has("ControlLeft") || pressedKeys.has("ControlRight")) {
-        controls.enablePan = true; // 🔓 déplacement latéral
-      }
+      if (pressedKeys.has("AltLeft")) ctrl.enableRotate = true;
+      if (pressedKeys.has("ControlLeft") || pressedKeys.has("ControlRight"))
+        ctrl.enablePan = true;
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      const controls = controlsRef.current;
-      if (!controls) return;
+      const ctrl = controlsRef.current;
+      if (!ctrl) return;
       pressedKeys.delete(event.code);
 
-      // 🔒 Quand Alt n’est plus pressé, on bloque la rotation
-      if (!pressedKeys.has("AltLeft")) {
-        controls.enableRotate = false;
-      }
-
-      // 🔒 Quand Ctrl n’est plus pressé, on bloque le pan
-      if (!pressedKeys.has("ControlLeft") && !pressedKeys.has("ControlRight")) {
-        controls.enablePan = false;
-      }
+      if (!pressedKeys.has("AltLeft")) ctrl.enableRotate = false;
+      if (!pressedKeys.has("ControlLeft") && !pressedKeys.has("ControlRight"))
+        ctrl.enablePan = false;
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -72,40 +67,69 @@ const CameraControlByKey = ({
 
   return null;
 };
-// --------------------------------------------------
 
+/**
+ * Primary layout component for the 3D Editor.
+ * Orchestrates the Canvas, Sidebar properties, and collaborative UI elements.
+ */
 const HomePage: React.FC = () => {
-  const { state, dispatch } = useScene();
+  const { state, dispatch, commitAction, clientId, connectedUsers } =
+    useScene();
   const { meshes, selectedIds, mode } = state;
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
-
   const isEditing = mode === "edit";
 
+  /**
+   * Clears selection and reverts to object mode when clicking empty space.
+   */
   const handlePointerMissed = () => {
     if (mode === "object") {
       dispatch({ type: "CLEAR_SELECTION" });
+      commitAction({ type: "CLEAR_SELECTION" });
       dispatch({ type: "SET_MODE", payload: "object" });
     }
   };
 
+  /**
+   * Handles mesh selection logic, supporting multi-select via Ctrl/Meta keys.
+   */
   const handleSelect = (id: number, event: MouseEvent) => {
     const isCtrlPressed = event.ctrlKey || event.metaKey;
     setDeleteModalVisible(false);
 
-    dispatch({
+    const action = {
       type: isCtrlPressed ? "MULTI_SELECT" : "SELECT_MESH",
       payload: id,
-    });
+    } as const;
+
+    dispatch(action);
+    commitAction(action);
 
     if (mode !== "edit") {
       dispatch({ type: "SET_MODE", payload: "object" });
     }
   };
 
+  /**
+   * Displays a warning notification when a user attempts to interact with a locked mesh.
+   */
+  const handleLockedClick = (meshId: number) => {
+    const mesh = meshes.find((m) => m.id === meshId);
+    setSnackbarMessage(
+      `This mesh is currently being edited by ${mesh?.lockedByName || "another user"}`,
+    );
+    setSnackbarVisible(true);
+  };
+
+  /**
+   * Triggers the deletion context menu at the mouse coordinates.
+   */
   const handleRightClick = (event: ThreeEvent<MouseEvent>, meshId: number) => {
     event.stopPropagation();
     event.nativeEvent.preventDefault();
@@ -119,6 +143,9 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Instantiates a new primitive mesh into the global scene state.
+   */
   const addMesh = (type: ShapeType) => {
     const newMesh: MeshData = {
       id: Date.now(),
@@ -128,19 +155,31 @@ const HomePage: React.FC = () => {
       scale: [1, 1, 1],
       color: "#ffffff",
     };
-    dispatch({ type: "ADD_MESH", payload: newMesh });
+    commitAction({ type: "ADD_MESH", payload: newMesh });
   };
 
+  /**
+   * Resets the entire scene for all connected users after confirmation.
+   */
   const resetBoard = () => {
-    dispatch({ type: "RESET_SCENE" });
-    dispatch({ type: "SET_MODE", payload: "object" });
+    if (confirm("Reset entire scene? This will affect all users.")) {
+      commitAction({ type: "RESET_SCENE" });
+      dispatch({ type: "SET_MODE", payload: "object" });
+    }
   };
 
+  /**
+   * Clears current selection and exits edit mode.
+   */
   const resetEdit = () => {
     dispatch({ type: "CLEAR_SELECTION" });
+    commitAction({ type: "CLEAR_SELECTION" });
     dispatch({ type: "SET_MODE", payload: "object" });
   };
 
+  /**
+   * Toggles the interaction mode between global transformations and vertex editing.
+   */
   const handleToggleEdit = () => {
     if (selectedIds.length === 0) return;
     dispatch({
@@ -149,6 +188,9 @@ const HomePage: React.FC = () => {
     });
   };
 
+  /**
+   * Renders a CustomMesh instance with selection and context menu bindings.
+   */
   const renderMesh = (mesh: MeshData) => (
     <CustomMesh
       key={mesh.id}
@@ -160,12 +202,15 @@ const HomePage: React.FC = () => {
       isSelected={selectedIds.includes(mesh.id)}
       onClick={(event, id) => handleSelect(id, event)}
       onContextMenu={(event) => handleRightClick(event, mesh.id)}
+      onLockedClick={handleLockedClick}
       color={mesh.color}
     />
   );
 
   return (
     <div className="homepage">
+      <ActiveUsers users={connectedUsers} currentUserId={clientId} />
+
       <Toolbar
         isEditing={isEditing}
         onSelectDropdown={addMesh}
@@ -184,25 +229,23 @@ const HomePage: React.FC = () => {
         <ambientLight intensity={0.5} />
         <directionalLight position={[2, 5, 3]} intensity={0.8} />
 
-        {/* 🎮 OrbitControls relié à la caméra */}
-        <OrbitControls enableDamping ref={controlsRef as any} />
-
-        {/* 🧠 Gestion clavier : Alt = rotation, Ctrl = pan */}
+        <OrbitControls enableDamping ref={controlsRef} />
         <CameraControlByKey controlsRef={controlsRef} />
 
+        {/* Scene Environment: Infinite Axes and Grid */}
         <group>
           <primitive
             object={createInfiniteAxisLine(
               "#f87171",
               [-1000, 0, 0],
-              [1000, 0, 0]
+              [1000, 0, 0],
             )}
           />
           <primitive
             object={createInfiniteAxisLine(
               "#34d399",
               [0, 0, -1000],
-              [0, 0, 1000]
+              [0, 0, 1000],
             )}
           />
           <Grid args={[1000, 1000]} cellColor={"#444"} sectionColor={"#888"} />
@@ -211,17 +254,26 @@ const HomePage: React.FC = () => {
         {meshes.map(renderMesh)}
       </Canvas>
 
+      {/* Global Modals and Notifications */}
       {deleteModalVisible && selectedIds.length > 0 && (
         <DeleteModal
           position={modalPosition}
           onDelete={() => {
-            dispatch({ type: "DELETE_SELECTED_MESHES" });
+            commitAction({ type: "DELETE_SELECTED_MESHES" });
             setDeleteModalVisible(false);
             dispatch({ type: "SET_MODE", payload: "object" });
           }}
           onClose={() => setDeleteModalVisible(false)}
         />
       )}
+
+      <Snackbar
+        message={snackbarMessage}
+        isVisible={snackbarVisible}
+        onClose={() => setSnackbarVisible(false)}
+        type="warning"
+        duration={3000}
+      />
     </div>
   );
 };

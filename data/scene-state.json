@@ -1,0 +1,495 @@
+{
+  "meshes": [
+    {
+      "id": 1771174810253,
+      "type": "circle",
+      "position": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "scale": [1, 1, 1],
+      "color": "#ffffff",
+      "vertexModifications": {
+        "0": [-0.36594943902747146, 0.07684568972813921, 0.16946553706981005]
+      },
+      "lockedBy": null,
+      "lockedByName": null
+    }
+  ],
+  "selectedIds": [],
+  "camera": {
+    "position": [5, 5, 5],
+    "target": [0, 0, 0],
+    "fov": 60
+  },
+  "mode": "object",
+  "editMode": {
+    "selectionType": "vertex",
+    "selectedElements": []
+  },
+  "history": [
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771155240497,
+        "type": "cube",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771155240497,
+        "updates": [
+          {
+            "vertexIndex": 0,
+            "newPosition": [
+              0.4857164904401909, 0.2543169428039679, -0.18121435941378183
+            ]
+          },
+          {
+            "vertexIndex": 1,
+            "newPosition": [
+              0.5953784482660931, -0.07203098939732377, -1.5805330034592062
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771155292051,
+        "type": "sphere",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771155292051,
+        "property": "position",
+        "values": [2, 0, 0]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771155240497,
+        "property": "scale",
+        "values": [2, 1, 1]
+      }
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771155771182,
+        "type": "cube",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771155771182,
+        "updates": [
+          {
+            "vertexIndex": 5,
+            "newPosition": [
+              -0.0881085203611412, 0.6128595801837947, 0.8529554963450656
+            ]
+          },
+          {
+            "vertexIndex": 0,
+            "newPosition": [
+              0.9118914796388589, 0.6128595801837947, 0.8529554963450656
+            ]
+          },
+          {
+            "vertexIndex": 7,
+            "newPosition": [
+              -0.0881085203611412, -0.3871404198162053, 0.8529554963450656
+            ]
+          },
+          {
+            "vertexIndex": 2,
+            "newPosition": [
+              0.9118914796388589, -0.3871404198162053, 0.8529554963450656
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771155771182,
+        "updates": [
+          {
+            "vertexIndex": 4,
+            "newPosition": [
+              -0.7225944773668053, 0.043578769692615094, -0.0891536707418582
+            ]
+          },
+          {
+            "vertexIndex": 5,
+            "newPosition": [
+              -0.31070299772794646, 0.1564383498764098, 1.2638018256032075
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771155771182,
+        "updates": [
+          {
+            "vertexIndex": 4,
+            "newPosition": [
+              -0.6813604728757281, 0.46079817653802196, 0.20673687612941327
+            ]
+          },
+          {
+            "vertexIndex": 5,
+            "newPosition": [
+              -0.26946899323686924, 0.5736577567218166, 1.559692372474479
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771155771182,
+        "vertexIndex": 1,
+        "newPosition": [
+          0.896441113740173, 1.244963622972933, -0.028221665387307693
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771155771182,
+        "vertexIndex": 1,
+        "newPosition": [
+          0.896441113740173, 1.2615082497655998, -0.028221665387307693
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771155771182,
+        "vertexIndex": 1,
+        "newPosition": [
+          0.896441113740173, 1.2615082497655998, -0.03314405818676208
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771155771182,
+        "vertexIndex": 1,
+        "newPosition": [
+          0.896441113740173, 1.2615082497655998, -0.7611440872250006
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771155771182,
+        "property": "scale",
+        "values": [2, 1, 1]
+      }
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771156450960,
+        "type": "sphere",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771155771182,
+        "property": "position",
+        "values": [-4, 0, 0]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771156450960,
+        "property": "position",
+        "values": [2, 0, 0]
+      }
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771156468414,
+        "type": "cylinder",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771156468414,
+        "vertexIndex": 64,
+        "newPosition": [0, 1.047850114037273, 0]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771156468414,
+        "vertexIndex": 65,
+        "newPosition": [0, -0.7963359694731251, 0]
+      }
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771156603666,
+        "type": "cylinder",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771156468414,
+        "property": "position",
+        "values": [2, 0, 0]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771156468414,
+        "property": "scale",
+        "values": [3, 1, 1]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771156603666,
+        "vertexIndex": 64,
+        "newPosition": [0, 0.6625398029306306, 0]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771156603666,
+        "property": "position",
+        "values": [-1, 0, 0]
+      }
+    },
+    {
+      "type": "UPDATE_MESH",
+      "payload": {
+        "id": 1771156468414,
+        "property": "rotation",
+        "values": [90, 0, 0]
+      }
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771173886650,
+        "type": "cube",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771173886650,
+        "updates": [
+          {
+            "vertexIndex": 5,
+            "newPosition": [
+              0.9519204957969813, 0.3412559295306015, 0.25159711461342316
+            ]
+          },
+          {
+            "vertexIndex": 0,
+            "newPosition": [
+              1.9519204957969813, 0.3412559295306015, 0.25159711461342316
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771173886650,
+        "vertexIndex": 5,
+        "newPosition": [
+          0.5136197092148552, 0.5465502571417062, 0.7798304047995835
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_MULTIPLE_VERTICES",
+      "payload": {
+        "meshId": 1771173886650,
+        "updates": [
+          {
+            "vertexIndex": 5,
+            "newPosition": [
+              1.0029663573134053, 2.0093245629346974, -0.19337396586957756
+            ]
+          },
+          {
+            "vertexIndex": 0,
+            "newPosition": [
+              2.4412671438955313, 1.8040302353235926, -0.721607256055738
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771174713672,
+        "type": "cube",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "DELETE_SELECTED_MESHES"
+    },
+    {
+      "type": "ADD_MESH",
+      "payload": {
+        "id": 1771174810253,
+        "type": "circle",
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
+        "color": "#ffffff"
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771174810253,
+        "vertexIndex": 0,
+        "newPosition": [
+          0.45625662857503735, -0.2274593619602295, 0.20592819628896572
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771174810253,
+        "vertexIndex": 0,
+        "newPosition": [
+          -0.18595211606968975, -0.2274593619602295, 0.20592819628896572
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771174810253,
+        "vertexIndex": 0,
+        "newPosition": [
+          -0.18595211606968975, -0.2274593619602295, 0.9135601273439453
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771174810253,
+        "vertexIndex": 0,
+        "newPosition": [
+          -0.3995258902872866, 0.050762355860510394, 0.5527623804742333
+        ]
+      }
+    },
+    {
+      "type": "UPDATE_VERTEX_POSITION",
+      "payload": {
+        "meshId": 1771174810253,
+        "vertexIndex": 0,
+        "newPosition": [
+          -0.36594943902747146, 0.07684568972813921, 0.16946553706981005
+        ]
+      }
+    }
+  ],
+  "grid": {
+    "visible": true,
+    "size": 10,
+    "divisions": 10
+  },
+  "lights": [
+    {
+      "id": 1,
+      "type": "directional",
+      "color": "#ffffff",
+      "intensity": 0.8,
+      "position": [2, 5, 3]
+    }
+  ]
+}

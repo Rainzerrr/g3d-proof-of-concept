@@ -11,5 +11,10 @@
     "position": "Position",
     "scale": "Scale",
     "rotation": "Rotation"
+  },
+  "online": {
+    "warnings": {
+      "editedMesh": "This mesh is currently being edited by another user"
+    }
   }
 }

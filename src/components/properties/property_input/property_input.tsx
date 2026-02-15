@@ -5,6 +5,7 @@ import "./property_input.scss";
 interface PropertyInputProps {
   defaultValue?: string;
   onValidChange?: (value: string) => void;
+  onBlur?: () => void; // 🆕 Added
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -17,6 +18,7 @@ const PropertyInput: FC<PropertyInputProps> = ({
   defaultValue = "",
   axe,
   onValidChange,
+  onBlur, // 🆕 Added
   placeholder,
   disabled,
   className,
@@ -33,31 +35,27 @@ const PropertyInput: FC<PropertyInputProps> = ({
     const val = e.target.value;
     setValue(val);
 
-    // ✅ Validation : Vide = pas d'erreur mais pas de callback
     if (val.trim() === "") {
       return;
     }
 
-    // ✅ Validation : Nombre valide
     const floatValue = parseFloat(val);
     if (isNaN(floatValue)) {
       return;
     }
 
-    // ✅ Validation : Limites
     if (floatValue < min || floatValue > max) {
       return;
     }
 
-    // ✅ Tout est OK, appeler le callback
     onValidChange?.(val);
   };
 
   const handleBlur = () => {
-    // ✅ Si vide au blur, restaurer la valeur par défaut
     if (value.trim() === "" && defaultValue) {
       setValue(defaultValue);
     }
+    onBlur?.();
   };
 
   return (
@@ -65,7 +63,7 @@ const PropertyInput: FC<PropertyInputProps> = ({
       <span
         className={classNames(
           "property-input__axe-letter",
-          `property-input__axe-letter--${axe}`
+          `property-input__axe-letter--${axe}`,
         )}
       >
         {axe}
