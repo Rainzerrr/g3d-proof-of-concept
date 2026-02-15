@@ -133,6 +133,29 @@ export function sceneReducer(state: SceneState, action: Action): SceneState {
       };
     }
 
+    case "MULTI_SELECT_EDIT_ELEMENT": {
+      const { meshId, elementIndex } =
+        action.payload as SelectEditElementPayload;
+
+      const alreadySelected = state.editMode.selectedElements.some(
+        (el) => el.meshId === meshId && el.elementIndex === elementIndex,
+      );
+
+      const selectedElements = alreadySelected
+        ? state.editMode.selectedElements.filter(
+            (el) => !(el.meshId === meshId && el.elementIndex === elementIndex),
+          )
+        : [...state.editMode.selectedElements, { meshId, elementIndex }];
+
+      return {
+        ...state,
+        editMode: {
+          ...state.editMode,
+          selectedElements,
+        },
+      };
+    }
+
     case "UPDATE_VERTEX_POSITION": {
       const { meshId, vertexIndex, newPosition } =
         action.payload as UpdateVertexPositionPayload;
@@ -175,8 +198,7 @@ export function sceneReducer(state: SceneState, action: Action): SceneState {
       return action.payload as SceneState;
 
     case "UPDATE_MESH_LOCK": {
-      //@ts-expect-error set type after
-      const { meshId, lockedBy, lockedByName } = action.payload;
+      const { meshId, lockedBy, lockedByName } = action.payload as any;
       return {
         ...state,
         meshes: state.meshes.map((m) =>

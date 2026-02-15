@@ -206,7 +206,6 @@ const HomePage: React.FC = () => {
       color={mesh.color}
     />
   );
-
   return (
     <div className="homepage">
       <ActiveUsers users={connectedUsers} currentUserId={clientId} />

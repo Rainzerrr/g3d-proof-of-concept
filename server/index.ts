@@ -529,6 +529,12 @@ wss.on("connection", (ws: WebSocket) => {
 
 function handleClientAction(action: Action, authorId: string): void {
   if (action.type === "SELECT_MESH") {
+    globalState.selectedIds.forEach((id) => {
+      if (meshLocks.get(id) === authorId) {
+        releaseLock(id, authorId);
+      }
+    });
+
     const meshId = action.payload as number;
     acquireLock(meshId, authorId);
     globalState = sceneReducer(globalState, action);
