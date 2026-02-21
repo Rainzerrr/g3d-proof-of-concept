@@ -104,6 +104,7 @@ export interface Action {
     | "UPDATE_MESH_LOCK";
   payload?:
     | number
+    | number[]
     | string
     | MeshData
     | UpdateVertexPositionPayload

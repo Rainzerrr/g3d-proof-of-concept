@@ -528,57 +528,7 @@ wss.on("connection", (ws: WebSocket) => {
 // ═══════════════════════════════════════════════════════════
 
 function handleClientAction(action: Action, authorId: string): void {
-  if (action.type === "SELECT_MESH") {
-    globalState.selectedIds.forEach((id) => {
-      if (meshLocks.get(id) === authorId) {
-        releaseLock(id, authorId);
-      }
-    });
-
-    const meshId = action.payload as number;
-    acquireLock(meshId, authorId);
-    globalState = sceneReducer(globalState, action);
-    return;
-  }
-
-  if (action.type === "MULTI_SELECT") {
-    const meshId = action.payload as number;
-    globalState = sceneReducer(globalState, action);
-
-    if (globalState.selectedIds.includes(meshId)) {
-      acquireLock(meshId, authorId);
-    } else {
-      releaseLock(meshId, authorId);
-    }
-    return;
-  }
-
-  if (action.type === "CLEAR_SELECTION") {
-    releaseAllLocks(authorId);
-    globalState = sceneReducer(globalState, action);
-    return;
-  }
-
-  if (action.type === "RESET_SCENE") {
-    releaseAllLocks(authorId);
-  }
-
-  if (
-    action.type === "DELETE_SELECTED_MESHES" ||
-    action.type === "REMOVE_MESH"
-  ) {
-    const meshesToDelete =
-      action.type === "DELETE_SELECTED_MESHES"
-        ? globalState.selectedIds
-        : [action.payload as number];
-
-    meshesToDelete.forEach((meshId) => {
-      if (meshLocks.get(meshId) === authorId) {
-        meshLocks.delete(meshId);
-      }
-    });
-  }
-
+  // 1. 🛡️ LOCK VALIDATION (Reject unauthorized edits early)
   if (requiresLock(action)) {
     const meshId = getMeshIdFromAction(action);
     const lockOwner = meshLocks.get(meshId);
@@ -592,12 +542,59 @@ function handleClientAction(action: Action, authorId: string): void {
       if (ws) {
         sendError(ws, `Mesh ${meshId} is locked by ${ownerName}`);
       }
-      return;
+      return; // Stop processing. The action is rejected.
     }
   }
 
+  // 2. 🔐 LOCK MANAGEMENT (Infer locks based on selections/deletions)
+  if (action.type === "SELECT_MESH") {
+    // Release previously selected meshes
+    globalState.selectedIds.forEach((id) => {
+      if (meshLocks.get(id) === authorId) releaseLock(id, authorId);
+    });
+    // Acquire the new one
+    acquireLock(action.payload as number, authorId);
+  }
+
+  if (action.type === "MULTI_SELECT") {
+    const meshId = action.payload as number;
+    // We check if it's already selected IN THE CURRENT STATE (before reducing)
+    if (globalState.selectedIds.includes(meshId)) {
+      releaseLock(meshId, authorId); // They are deselecting it
+    } else {
+      acquireLock(meshId, authorId); // They are selecting it
+    }
+  }
+
+  if (action.type === "CLEAR_SELECTION" || action.type === "RESET_SCENE") {
+    releaseAllLocks(authorId);
+  }
+
+  if (
+    action.type === "DELETE_SELECTED_MESHES" ||
+    action.type === "REMOVE_MESH"
+  ) {
+    // Use the payload if available (to match our frontend fix), otherwise fallback to server state
+    const meshesToDelete = action.payload
+      ? Array.isArray(action.payload)
+        ? action.payload
+        : [action.payload]
+      : globalState.selectedIds;
+
+    meshesToDelete.forEach((meshId: number) => {
+      if (meshLocks.get(meshId) === authorId) {
+        releaseLock(meshId, authorId); // Explicitly release instead of just deleting from map
+      }
+    });
+  }
+
+  // 3. 🧠 UPDATE MASTER STATE
+  // Now that locks are sorted, apply the action to the server's truth
   globalState = sceneReducer(globalState, action);
 
+  // 4. 📡 BROADCAST TO PEERS
+  // We do NOT broadcast selection actions, because selections are local to each user's view.
+  // We ONLY broadcast actions that modify the scene geometry or environment.
   const selectionActions = [
     "SELECT_MESH",
     "MULTI_SELECT",

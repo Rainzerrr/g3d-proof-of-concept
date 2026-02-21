@@ -386,204 +386,214 @@ const CustomMesh: FC<CustomMeshProps> = ({
   }, []);
 
   return (
-    <group
-      ref={meshRef}
-      position={position}
-      rotation={rotationInRadians}
-      scale={scale}
-      onClick={(e) => {
-        e.stopPropagation();
+    <>
+      <group
+        ref={meshRef}
+        position={position}
+        rotation={rotationInRadians}
+        scale={scale}
+        onClick={(e) => {
+          e.stopPropagation();
 
-        // 🆕 Check if mesh is locked by another user
-        if (isLockedByOther && mode === "object") {
-          onLockedClick?.(id);
-          return;
-        }
+          // 🆕 Check if mesh is locked by another user
+          if (isLockedByOther && mode === "object") {
+            onLockedClick?.(id);
+            return;
+          }
 
-        if (mode === "edit") {
-          if (isDragging) return;
-          if (isSelected) return;
+          if (mode === "edit") {
+            if (isDragging) return;
+            if (isSelected) return;
+            onClick(e.nativeEvent, id);
+            return;
+          }
           onClick(e.nativeEvent, id);
-          return;
-        }
-        onClick(e.nativeEvent, id);
-      }}
-      onContextMenu={onContextMenu}
-    >
-      <mesh
-        geometry={appliedGeometry}
-        castShadow
-        receiveShadow
-        userData={{ id, isSelectable: mode === "object" }}
+        }}
+        onContextMenu={onContextMenu}
       >
-        {/* ✅ Keep original color - no visual lock indicator */}
-        <meshStandardMaterial
-          color={color}
-          transparent={false}
-          side={is2D ? THREE.DoubleSide : THREE.FrontSide}
-        />
-      </mesh>
+        <mesh
+          geometry={appliedGeometry}
+          castShadow
+          receiveShadow
+          userData={{ id, isSelectable: mode === "object" }}
+        >
+          {/* ✅ Keep original color - no visual lock indicator */}
+          <meshStandardMaterial
+            color={color}
+            transparent={false}
+            side={is2D ? THREE.DoubleSide : THREE.FrontSide}
+          />
+        </mesh>
 
-      {/* ❌ Removed lock indicator HTML element */}
+        {/* ❌ Removed lock indicator HTML element */}
 
-      {isSelected && mode === "object" && (
-        <>
-          {!is2D && (
-            <mesh
-              geometry={appliedGeometry}
-              scale={[
-                THEME.sizes.outlineScale,
-                THEME.sizes.outlineScale,
-                THEME.sizes.outlineScale,
-              ]}
-              userData={{ isSelectable: false }}
-            >
-              <meshBasicMaterial
-                color={THEME.outline.object}
-                side={THREE.BackSide}
-                transparent
-                opacity={1}
-                depthWrite={false}
-              />
-            </mesh>
-          )}
-          {is2D && (
+        {isSelected && mode === "object" && (
+          <>
+            {!is2D && (
+              <mesh
+                geometry={appliedGeometry}
+                scale={[
+                  THEME.sizes.outlineScale,
+                  THEME.sizes.outlineScale,
+                  THEME.sizes.outlineScale,
+                ]}
+                userData={{ isSelectable: false }}
+              >
+                <meshBasicMaterial
+                  color={THEME.outline.object}
+                  side={THREE.BackSide}
+                  transparent
+                  opacity={1}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
+            {is2D && (
+              <lineSegments geometry={normalEdgesGeometry} raycast={() => null}>
+                <lineBasicMaterial
+                  color={THEME.outline.object}
+                  linewidth={THEME.sizes.edgeLineWidth}
+                />
+              </lineSegments>
+            )}
+          </>
+        )}
+
+        {isSelected && mode === "edit" && (
+          <>
             <lineSegments geometry={normalEdgesGeometry} raycast={() => null}>
               <lineBasicMaterial
-                color={THEME.outline.object}
+                color={THEME.edge.default}
                 linewidth={THEME.sizes.edgeLineWidth}
               />
             </lineSegments>
-          )}
-        </>
-      )}
 
-      {isSelected && mode === "edit" && (
-        <>
-          <lineSegments geometry={normalEdgesGeometry} raycast={() => null}>
-            <lineBasicMaterial
-              color={THEME.edge.default}
-              linewidth={THEME.sizes.edgeLineWidth}
-            />
-          </lineSegments>
+            {selectionData.selectedEdges.length > 0 && (
+              <lineSegments
+                geometry={selectedEdgesGeometry}
+                raycast={() => null}
+              >
+                <lineBasicMaterial
+                  color={THEME.edge.selected}
+                  linewidth={THEME.sizes.selectedEdgeLineWidth}
+                  depthTest={true}
+                />
+              </lineSegments>
+            )}
 
-          {selectionData.selectedEdges.length > 0 && (
-            <lineSegments geometry={selectedEdgesGeometry} raycast={() => null}>
-              <lineBasicMaterial
-                color={THEME.edge.selected}
-                linewidth={THEME.sizes.selectedEdgeLineWidth}
-                depthTest={true}
-              />
-            </lineSegments>
-          )}
+            {!is2D &&
+              selectionData.selectedFaces.length > 0 &&
+              selectionData.selectedFaces.map((face, faceIndex) => {
+                if (face.length < 3) return null;
+                const isQuad = face.length === 4;
+                const orderedFace = isQuad
+                  ? orderQuadVertices(face, topology.edges)
+                  : face;
 
-          {!is2D &&
-            selectionData.selectedFaces.length > 0 &&
-            selectionData.selectedFaces.map((face, faceIndex) => {
-              if (face.length < 3) return null;
-              const isQuad = face.length === 4;
-              const orderedFace = isQuad
-                ? orderQuadVertices(face, topology.edges)
-                : face;
+                const positions = new Float32Array(orderedFace.length * 3);
+                orderedFace.forEach((vertIdx, idx) => {
+                  const v = vertices[vertIdx];
+                  positions[idx * 3] = v[0];
+                  positions[idx * 3 + 1] = v[1];
+                  positions[idx * 3 + 2] = v[2];
+                });
 
-              const positions = new Float32Array(orderedFace.length * 3);
-              orderedFace.forEach((vertIdx, idx) => {
-                const v = vertices[vertIdx];
-                positions[idx * 3] = v[0];
-                positions[idx * 3 + 1] = v[1];
-                positions[idx * 3 + 2] = v[2];
-              });
+                const faceGeometry = new THREE.BufferGeometry();
+                faceGeometry.setAttribute(
+                  "position",
+                  new THREE.BufferAttribute(positions, 3),
+                );
+                faceGeometry.setIndex(isQuad ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]);
+                faceGeometry.computeVertexNormals();
 
-              const faceGeometry = new THREE.BufferGeometry();
-              faceGeometry.setAttribute(
-                "position",
-                new THREE.BufferAttribute(positions, 3),
-              );
-              faceGeometry.setIndex(isQuad ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]);
-              faceGeometry.computeVertexNormals();
+                return (
+                  <mesh
+                    key={`selected-face-${faceIndex}`}
+                    geometry={faceGeometry}
+                    userData={{ isSelectable: false }}
+                  >
+                    {/* ✅ Keep original face color */}
+                    <meshBasicMaterial
+                      color={THEME.face.selected}
+                      transparent
+                      opacity={THEME.face.opacity}
+                      side={THREE.DoubleSide}
+                      depthWrite={false}
+                      depthTest={true}
+                      polygonOffset
+                      polygonOffsetFactor={-1}
+                      polygonOffsetUnits={-1}
+                    />
+                  </mesh>
+                );
+              })}
 
+            {vertices.map((vertex, i) => {
+              const isSelectedVertex = selectedVertexIndices.includes(i);
               return (
                 <mesh
-                  key={`selected-face-${faceIndex}`}
-                  geometry={faceGeometry}
-                  userData={{ isSelectable: false }}
+                  key={i}
+                  position={vertex}
+                  scale={[1, 1, 1]}
+                  onClick={(e: ThreeEvent<MouseEvent>) => {
+                    e.stopPropagation();
+                    if (isDragging) return;
+
+                    // 🆕 Check if mesh is locked in edit mode
+                    if (isLockedByOther) {
+                      onLockedClick?.(id);
+                      return;
+                    }
+
+                    const ctrl = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+                    dispatch({
+                      type: ctrl
+                        ? "MULTI_SELECT_EDIT_ELEMENT"
+                        : "SELECT_EDIT_ELEMENT",
+                      payload: {
+                        meshId: id,
+                        elementIndex: i,
+                      } as SelectEditElementPayload,
+                    });
+                  }}
+                  userData={{ isVertexMesh: true, vertexIndex: i }}
                 >
-                  {/* ✅ Keep original face color */}
+                  <sphereGeometry args={[THEME.sizes.pointSize, 8, 8]} />
                   <meshBasicMaterial
-                    color={THEME.face.selected}
-                    transparent
-                    opacity={THEME.face.opacity}
-                    side={THREE.DoubleSide}
-                    depthWrite={false}
+                    color={
+                      isSelectedVertex
+                        ? THEME.vertex.selected
+                        : THEME.vertex.default
+                    }
                     depthTest={true}
-                    polygonOffset
-                    polygonOffsetFactor={-1}
-                    polygonOffsetUnits={-1}
                   />
                 </mesh>
               );
             })}
+          </>
+        )}
+      </group>
 
-          {vertices.map((vertex, i) => {
-            const isSelectedVertex = selectedVertexIndices.includes(i);
-            return (
-              <mesh
-                key={i}
-                position={vertex}
-                scale={[1, 1, 1]}
-                onClick={(e: ThreeEvent<MouseEvent>) => {
-                  e.stopPropagation();
-                  if (isDragging) return;
-
-                  // 🆕 Check if mesh is locked in edit mode
-                  if (isLockedByOther) {
-                    onLockedClick?.(id);
-                    return;
-                  }
-
-                  const ctrl = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
-                  dispatch({
-                    type: ctrl
-                      ? "MULTI_SELECT_EDIT_ELEMENT"
-                      : "SELECT_EDIT_ELEMENT",
-                    payload: {
-                      meshId: id,
-                      elementIndex: i,
-                    } as SelectEditElementPayload,
-                  });
-                }}
-                userData={{ isVertexMesh: true, vertexIndex: i }}
-              >
-                <sphereGeometry args={[THEME.sizes.pointSize, 8, 8]} />
-                <meshBasicMaterial
-                  color={
-                    isSelectedVertex
-                      ? THEME.vertex.selected
-                      : THEME.vertex.default
-                  }
-                  depthTest={true}
-                />
-              </mesh>
-            );
-          })}
-
-          {gizmoTarget && !isCtrlPressed && !isLockedByOther && (
-            <TransformControls
-              ref={(ref) => {
-                transformControlsRef.current = ref;
-                if (ref && !controlsReady) setControlsReady(true);
-              }}
-              mode="translate"
-              object={gizmoTarget}
-              onObjectChange={handleGizmoObjectChange}
-              showX
-              showY
-              showZ
-            />
-          )}
-        </>
-      )}
-    </group>
+      {/* 🚀 Gizmo is now safely outside the transformed group! */}
+      {isSelected &&
+        mode === "edit" &&
+        gizmoTarget &&
+        !isCtrlPressed &&
+        !isLockedByOther && (
+          <TransformControls
+            ref={(ref) => {
+              transformControlsRef.current = ref;
+              if (ref && !controlsReady) setControlsReady(true);
+            }}
+            mode="translate"
+            object={gizmoTarget}
+            onObjectChange={handleGizmoObjectChange}
+            showX
+            showY
+            showZ
+          />
+        )}
+    </>
   );
 };
 

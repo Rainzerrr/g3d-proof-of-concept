@@ -47,19 +47,27 @@ export function sceneReducer(state: SceneState, action: Action): SceneState {
       };
     }
 
-    case "DELETE_SELECTED_MESHES":
+    case "DELETE_SELECTED_MESHES": {
+      // Extract the specific IDs to delete from the action payload
+      const idsToDelete = action.payload as number[];
+
       return {
         ...state,
-        meshes: state.meshes.filter((m) => !state.selectedIds.includes(m.id)),
-        selectedIds: [],
+        // Filter out the meshes matching the IDs from the payload
+        meshes: state.meshes.filter((m) => !idsToDelete.includes(m.id)),
+        // Clean up the local selection state just in case
+        selectedIds: state.selectedIds.filter(
+          (id) => !idsToDelete.includes(id),
+        ),
         editMode: {
           ...state.editMode,
           selectedElements: state.editMode.selectedElements.filter(
-            (el) => !state.selectedIds.includes(el.meshId),
+            (el) => !idsToDelete.includes(el.meshId),
           ),
         },
         history: [...state.history, action],
       };
+    }
 
     /* --- Selection Management --- */
 

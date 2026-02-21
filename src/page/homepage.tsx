@@ -258,7 +258,11 @@ const HomePage: React.FC = () => {
         <DeleteModal
           position={modalPosition}
           onDelete={() => {
-            commitAction({ type: "DELETE_SELECTED_MESHES" });
+            // Pass the selectedIds into the payload so other clients know what to delete
+            commitAction({
+              type: "DELETE_SELECTED_MESHES",
+              payload: selectedIds,
+            });
             setDeleteModalVisible(false);
             dispatch({ type: "SET_MODE", payload: "object" });
           }}
